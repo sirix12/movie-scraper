@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Stream</title>
+<link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+<script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -29,7 +31,9 @@ html, body { width: 100%; height: 100%; background: #000; font-family: system-ui
 #loader-text { position: relative; z-index: 1; font-size: .95rem; color: rgba(255,255,255,.6); letter-spacing: .04em; text-shadow: 0 1px 4px #000; }
 
 #player { position: fixed; inset: 0; display: none; background: #000; }
-video { width: 100%; height: 100%; display: block; }
+.plyr { width: 100%; height: 100%; }
+.plyr__video-wrapper { height: 100%; }
+video { width: 100%; height: 100%; display: block; object-fit: contain; }
 
 #usage {
   position: fixed; inset: 0; display: none; flex-direction: column;
@@ -155,16 +159,42 @@ function play(rawUrl) {
     hls.loadSource(src);
     hls.attachMedia(v);
     hls.on(Hls.Events.MANIFEST_PARSED, function() {
+      var availableQualities = hls.levels.map(function(l) { return l.height; });
+      var qualityOptions = [0].concat(availableQualities); // 0 will represent 'Auto'
+      
+      var player = new Plyr(v, {
+        quality: {
+          default: 0,
+          options: qualityOptions,
+          forced: true,
+          onChange: function(e) {
+            if (e === 0) {
+              hls.currentLevel = -1; // Auto
+            } else {
+              hls.levels.forEach(function(level, levelIndex) {
+                if (level.height === e) {
+                  hls.currentLevel = levelIndex;
+                }
+              });
+            }
+          }
+        },
+        i18n: {
+          qualityLabel: { 0: 'Auto' }
+        }
+      });
+      
       showPlayer();
-      v.play().catch(function(){});
+      player.play().catch(function(){});
     });
     hls.on(Hls.Events.ERROR, function(_, d) {
       if (d.fatal) showErr(d.details || 'HLS fatal error');
     });
   } else {
+    var player = new Plyr(v);
     v.src = src;
     v.addEventListener('canplay', showPlayer, { once: true });
-    v.play().catch(function(err) { showErr(err.message); });
+    player.play().catch(function(err) { showErr(err.message); });
   }
 }
 </script>
