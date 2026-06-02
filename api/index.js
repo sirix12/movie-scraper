@@ -95,7 +95,7 @@ module.exports = async function handler(req, res) {
 
   // Proxy mode: /api?url=...
   if (q.url) {
-    const url = decodeURIComponent(q.url);
+    const url = q.url;
     try {
       const upstream = await fetchUpstream(url);
       const ct = (upstream.headers['content-type'] || '').toLowerCase();
@@ -105,6 +105,7 @@ module.exports = async function handler(req, res) {
         const chunks = [];
         for await (const chunk of upstream) chunks.push(chunk);
         const body = Buffer.concat(chunks).toString('utf8');
+        res.statusCode = upstream.statusCode;
         res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
         return res.end(rewriteM3u8(body, url));
       } else {
